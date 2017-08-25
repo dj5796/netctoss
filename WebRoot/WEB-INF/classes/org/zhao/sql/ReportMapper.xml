@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8" ?>  
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN"      
+ "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="org.zhao.dao.ReportDao">
+	
+	<select id="findBillRows" resultType="int">
+		select count(b.id) from bill b
+	</select>
+	
+	
+	<select id="findCustDurationByPage" parameterType="org.zhao.entity.page.Page" resultType="map"> 
+		select * from (
+			select info.*,ROWNUM num from (
+				select 
+				  a.account_id          as "account_id",
+				  a.login_name          as "login_name",
+				  a.real_name           as "real_name",
+				  a.idcard_no           as "idcard_no",
+				  a.telephone           as "telephone",
+				  b.bill_month          as "bill_month",
+				  b.sofar_duration_str  as "sofar_duration_str"
+				from bill b
+				left join account a on a.account_id=b.account_id
+				order by b.bill_month,a.account_id
+			) info
+		) where num &lt; #{end} and num &gt; #{begin}
+	</select>
+	
+	<select id="findCostUsingTimesByPage" parameterType="org.zhao.entity.page.Page" resultType="org.zhao.entity.Host">
+		select * from (
+			select info.*,ROWNUM num from (
+				select h.* from host h
+				order by 
+      				regexp_substr(h.unix_host,'[^.]+',1,1)+0,
+					regexp_substr(h.unix_host,'[^.]+',1,2)+0,
+      				regexp_substr(h.unix_host,'[^.]+',1,3)+0,
+					regexp_substr(h.unix_host,'[^.]+',1,4)+0
+			) info
+		) where num &lt; #{end} and num &gt; #{begin}
+	</select>
+	
+	<select id="findHostRows" resultType="int">
+		select count(h.host_id) from host h
+	</select>
+	
+	<select id="findByUnixHost" parameterType="string" resultType="org.zhao.entity.Host">
+		select * from host h
+		where trim(h.unix_host)=#{unix_host}
+	</select>
+	
+	<insert id="addHost" parameterType="org.zhao.entity.Host">
+		insert into host values (
+			host_seq.nextval, 
+			#{unix_host,jdbcType=VARCHAR},
+			#{monthly,jdbcType=INTEGER},
+			#{meal,jdbcType=INTEGER},
+			#{hourly,jdbcType=INTEGER}
+		)
+	</insert>
+	
+	<update id="addHostTimeByType" parameterType="int">
+		update host h
+		<set>
+			<choose>
+				<when test="costType==1">
+			       h.monthly=h.monthly+1
+				</when>
+				<when test="costType==2">
+			       h.meal=h.meal+1
+				</when>
+				<otherwise>
+			       h.hourly=h.hourly+1
+				</otherwise>
+			</choose>
+		</set>
+		where h.host_id=#{host_id}
+	</update>
+	
+	<select id="findDurationRankRows" resultType="int">
+		select count(id) from (
+			select
+				d.id,
+				dense_rank() over(
+					partition by h.unix_host 
+					order by d.sofar_duration
+				) rank
+			from duration_rank d
+			left join account a on a.account_id=d.account_id
+			left join host h on h.host_id=d.host_id
+		) info 
+		where rank &lt; 4
+	</select>
+	
+	<select id="findDurationRanksByPage" parameterType="org.zhao.entity.page.Page" resultType="org.zhao.entity.DurationRank">
+		select * from(
+			select info.*,rownum num from (
+				select
+					d.id,
+					a.account_id,
+					a.real_name,
+					a.login_name,
+					a.idcard_no,
+					h.host_id,
+					h.unix_host,
+					d.sofar_duration,
+					d.sofar_duration_str,
+					dense_rank() over(
+						partition by h.unix_host 
+						order by d.sofar_duration desc
+					) rank
+				from duration_rank d
+				left join account a on a.account_id=d.account_id
+				left join host h on h.host_id=d.host_id
+				order by 
+      				regexp_substr(h.unix_host,'[^.]+',1,1)+0,
+					regexp_substr(h.unix_host,'[^.]+',1,2)+0,
+      				regexp_substr(h.unix_host,'[^.]+',1,3)+0,
+					regexp_substr(h.unix_host,'[^.]+',1,4)+0
+			) info 
+			where rank &lt; 4
+		) where num &lt; #{end} and num &gt; #{begin}
+	</select>
+	
+	
+	
+	
+</mapper>

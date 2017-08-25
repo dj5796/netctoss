@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8" ?>  
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN"      
+ "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="org.zhao.dao.CostDao">
+	
+	<select id="findAllIsUsing" resultType="org.zhao.entity.Cost">
+		select * from cost c 
+		where c.status='0'
+		order by c.cost_type,c.cost_id
+	</select>
+
+	<select id="findByPage" parameterType="org.zhao.entity.page.Page" resultType="org.zhao.entity.Cost">
+		select * from (
+			select a.*,rownum num from (
+				select * from cost c order by 
+				<choose>
+					<!-- 任意排序条件非空时，按条件排序 -->
+					<when test="(baseDurationSort!=null &amp;&amp; baseDurationSort.length()>0) || (baseCostSort!=null &amp;&amp; baseCostSort.length()>0)">
+						<trim suffixOverrides=",">
+							<if test='baseDurationSort!=null &amp;&amp; baseDurationSort.equals("asc")'>
+								nvl(c.base_duration,0) asc,
+							</if>
+							<if test='baseDurationSort!=null &amp;&amp; baseDurationSort.equals("desc")'>
+								nvl(c.base_duration,0) desc,
+							</if>
+							<if test='baseCostSort!=null &amp;&amp; baseCostSort.equals("asc")'>
+								nvl(c.base_cost,0) asc,
+							</if>
+							<if test='baseCostSort!=null &amp;&amp; baseCostSort.equals("desc")'>
+								nvl(c.base_cost,0) desc,
+							</if>
+						</trim>
+					</when>
+					<!-- 默认按照ID排序 -->
+					<otherwise>
+						cost_id
+					</otherwise>
+				</choose>
+			) a
+		) where num &lt; #{end} and num &gt; #{begin}
+	</select>
+
+	<insert id="save" parameterType="org.zhao.entity.Cost">
+		<![CDATA[
+			insert into cost values(
+				cost_seq.nextval,
+				#{name,jdbcType=VARCHAR},
+				#{base_duration,jdbcType=INTEGER},
+				#{base_cost,jdbcType=DOUBLE},
+				#{unit_cost,jdbcType=DOUBLE},
+				#{status,jdbcType=CHAR},
+				#{descr,jdbcType=VARCHAR},
+				#{creatime,jdbcType=TIMESTAMP},
+				#{startime,jdbcType=TIMESTAMP},
+				#{cost_type,jdbcType=CHAR}
+			)
+		]]>
+	</insert>
+	
+	<select id="findById" parameterType="int" resultType="org.zhao.entity.Cost">
+		select * from cost where cost_id=#{id}
+	</select>
+	
+	<update id="update" parameterType="org.zhao.entity.Cost">
+		<![CDATA[
+			update cost set 
+			name=#{name}, 
+			base_duration=#{base_duration,jdbcType=NUMERIC},
+			base_cost=#{base_cost,jdbcType=NUMERIC},
+			unit_cost=#{unit_cost,jdbcType=NUMERIC},
+			descr=#{descr,jdbcType=VARCHAR},
+			cost_type=#{cost_type,jdbcType=CHAR}
+			where cost_id=#{cost_id}
+		]]>
+	</update>
+	
+	<delete id="delete" parameterType="int">
+		delete from cost where cost_id=#{id}
+	</delete>
+	
+	<select id="findRows" resultType="int">
+		select count(*) from cost
+	</select>
+	
+	<update id="startCost" parameterType="int">
+		update cost c set c.status='0',c.startime=sysdate where c.cost_id=#{id}
+	</update>
+	
+	<select id="findCostTypeById" parameterType="int" resultType="int">
+		select c.cost_type from cost c 
+		where c.cost_id=#{id}
+	</select>
+	
+</mapper>

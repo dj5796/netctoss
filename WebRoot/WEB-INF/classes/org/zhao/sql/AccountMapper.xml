@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8" ?>  
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN"      
+ "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="org.zhao.dao.AccountDao">
+
+	<select id="findAll" resultType="org.zhao.entity.Account">
+		select * from account
+	</select>
+	
+	<select id="findByPage" parameterType="org.zhao.entity.page.Page" resultType="org.zhao.entity.Account">
+		select * from (
+			select a.*,rownum num from (
+				select * from account
+				<where>
+					<if test="real_name!=null &amp;&amp; real_name.length()>0">
+						and real_name like '%'||#{real_name}||'%'
+					</if>
+					<if test="idcard_no!=null &amp;&amp; idcard_no.length()>0">
+						and idcard_no like '%'||#{idcard_no}||'%'
+					</if>
+					<if test="login_name!=null &amp;&amp; login_name.length()>0">
+						and login_name like '%'||#{login_name}||'%'
+					</if>
+					<if test='status!=null &amp;&amp; !status.equals("-1")'>
+						and status=#{status}
+					</if>
+				</where>
+				order by account_id
+			) a
+		) where num &lt; #{end} and num &gt; #{begin}
+	</select>
+	
+	<select id="findRows" parameterType="org.zhao.entity.page.Page" resultType="int">
+		select count(*) from account 
+		<where>
+			<if test="real_name!=null &amp;&amp; real_name.length()>0">
+				and real_name like '%'||#{real_name}||'%'
+			</if>
+			<if test="idcard_no!=null &amp;&amp; idcard_no.length()>0">
+				and idcard_no like '%'||#{idcard_no}||'%'
+			</if>
+			<if test="login_name!=null &amp;&amp; login_name.length()>0">
+				and login_name like '%'||#{login_name}||'%'
+			</if>
+			<if test='status!=null &amp;&amp; !status.equals("-1")'>
+				and status=#{status}
+			</if>
+		</where>
+	</select>
+
+	<update id="updateStatus" parameterType="org.zhao.entity.Account">
+		update account set status=#{status},
+		<choose>
+			<when test="status==0">
+				pause_date=null
+			</when>
+			<when test="status==1">
+				pause_date=SYSDATE
+			</when>
+			<otherwise>
+				close_date=SYSDATE
+			</otherwise>
+		</choose>
+		where account_id=#{account_id}
+	</update>
+
+	<select id="findById" parameterType="int" resultType="org.zhao.entity.Account">
+		select a.* from account a where a.account_id=#{id}
+	</select>
+	
+	<select id="getAccountInfoById" parameterType="int" resultType="hashMap">
+		select 
+		  a.account_id 		as "account_id",
+		  a.login_name 		as "login_name",
+		  a.login_passwd 	as "login_passwd",
+		  a.status 			as "status",
+		  a.create_date 	as "create_date",
+		  a.pause_date 		as "pause_date",
+		  a.close_date 		as "close_date",
+		  a.real_name 		as "real_name",
+		  a.idcard_no 		as "idcard_no",
+		  a.birthdate 		as "birthdate",
+		  a.gender 			as "gender",
+		  a.occupation 		as "occupation",
+		  a.telephone 		as "telephone",
+		  a.email 			as "email",
+		  a.mailaddress 	as "mailaddress",
+		  a.zipcode 		as "zipcode",
+		  a.qq 				as "qq",
+		  a.last_login_time	as "last_login_time",
+		  a.last_login_ip 	as "last_login_ip",
+		  a.recommender_id 	as "recommender_id",
+		  r.idcard_no 		as "recommender_idcardno",
+		  r.real_name 		as "recommender_name"
+		from account a 
+		left join account r on a.recommender_id=r.account_id
+		where a.account_id=#{id}
+	</select>
+	
+	<update id="update" parameterType="org.zhao.entity.Account">
+		update account
+		set
+			<if test='login_passwd!=null &amp;&amp; !login_passwd.equals("")'>
+				login_passwd=#{login_passwd,jdbcType=VARCHAR},
+			</if>
+			real_name=#{real_name,jdbcType=VARCHAR},
+			gender=#{gender,jdbcType=CHAR},
+			occupation=#{occupation,jdbcType=VARCHAR},
+			telephone=#{telephone,jdbcType=VARCHAR},
+			qq=#{qq,jdbcType=VARCHAR},
+			email=#{email,jdbcType=VARCHAR},
+			mailaddress=#{mailaddress,jdbcType=VARCHAR},
+			zipcode=#{zipcode,jdbcType=CHAR},
+			recommender_id=#{recommender_id,jdbcType=NUMERIC}
+		where account_id=#{account_id}
+	</update>
+	
+	<insert id="save" parameterType="org.zhao.entity.Account">
+		<![CDATA[
+			insert into account values(
+				account_seq.nextval,
+				#{recommender_id,jdbcType=NUMERIC},
+				#{login_name,jdbcType=VARCHAR},
+				#{login_passwd,jdbcType=VARCHAR},
+				#{status,jdbcType=CHAR},
+				#{create_date,jdbcType=TIMESTAMP},
+				#{pause_date,jdbcType=TIMESTAMP},
+				#{close_date,jdbcType=TIMESTAMP},
+				#{real_name,jdbcType=VARCHAR},
+				#{idcard_no,jdbcType=VARCHAR},
+				#{birthdate,jdbcType=DATE},
+				#{gender,jdbcType=CHAR},
+				#{occupation,jdbcType=VARCHAR},
+				#{telephone,jdbcType=VARCHAR},
+				#{email,jdbcType=VARCHAR},
+				#{mailaddress,jdbcType=VARCHAR},
+				#{zipcode,jdbcType=CHAR},
+				#{qq,jdbcType=VARCHAR},
+				#{last_login_time,jdbcType=TIMESTAMP},
+				#{last_login_ip,jdbcType=VARCHAR}
+			)
+		]]>
+	</insert>
+	
+	<select id="findByIdcardNo" parameterType="string" resultType="org.zhao.entity.Account">
+		select * from account where idcard_no=#{idcardNo}
+	</select>	
+	
+	<select id="findAccountByLoginName" parameterType="string" resultType="org.zhao.entity.Account">
+		select * from account where login_name=#{loginName}
+	</select>	
+	
+</mapper>

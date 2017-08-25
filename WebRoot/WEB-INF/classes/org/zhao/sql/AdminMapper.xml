@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8" ?>  
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN"      
+ "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="org.zhao.dao.AdminDao">
+
+	<select id="findByPage" parameterType="org.zhao.entity.page.Page" resultMap="adminMap">
+		select * from (
+			select a.*,ROWNUM num from (
+				select * from admin_info
+				where admin_id in (
+					select a.admin_id
+					from admin_info a
+					left join admin_role ar on a.admin_id=ar.admin_id
+					left join role_info ri on ri.role_id=ar.role_id
+					left join role_module rm on rm.role_id=ri.role_id
+					<where>
+						<if test="roleName!=null &amp;&amp; roleName.length()>0">
+							and ri.name like '%'||#{roleName}||'%'
+						</if>
+						<if test="moduleId!=null">
+							and rm.module_id=#{moduleId}
+						</if>
+					</where>
+				)
+				order by admin_id
+			) a
+		) where num &lt; #{end} and num > #{begin}
+	</select>
+	
+	<resultMap id="adminMap" type="org.zhao.entity.Admin">
+		<id column="admin_id" property="admin_id" />
+		<collection ofType="org.zhao.entity.Role"
+			property="roles" javaType="java.util.ArrayList" column="admin_id" select="selectRoles">
+		</collection>
+	</resultMap>
+	
+	<select id="selectRoles" parameterType="int" resultType="org.zhao.entity.Role">
+		select * from role_info where role_id in (
+			select role_id from admin_role
+			where admin_id=#{id}
+		)
+	</select>
+	
+	<select id="findRows" parameterType="org.zhao.entity.page.Page" resultType="int">
+		select count(*) from admin_info
+		where admin_id in (
+			select a.admin_id
+			from admin_info a
+			left join admin_role ar on a.admin_id=ar.admin_id
+			left join role_info ri on ri.role_id=ar.role_id
+			left join role_module rm on rm.role_id=ri.role_id
+			<where>
+				<if test="roleName!=null &amp;&amp; roleName.length()>0">
+					and ri.name like '%'||#{roleName}||'%'
+				</if>
+				<if test="moduleId!=null">
+					and rm.module_id=#{moduleId}
+				</if>
+			</where>
+		)
+	</select>	
+	
+	<update id="updatePassword" parameterType="hashMap">
+		update admin_info set password=#{password} where admin_id in 
+		<foreach collection="ids" open="(" close=")" separator="," item="id">
+			#{id}
+		</foreach>
+	</update>
+	
+	<select id="findByAdminId" parameterType="int" resultMap="adminMap">
+		select * from admin_info where admin_id=#{adminId}
+	</select>
+	
+	<insert id="saveAdmin" parameterType="org.zhao.entity.Admin">
+		<selectKey keyProperty="admin_id" resultType="java.lang.Integer" order="BEFORE">
+			select admin_seq.nextval from dual
+		</selectKey>
+		insert into admin_info values(
+			#{admin_id},
+			#{admin_code,jdbcType=VARCHAR},
+			#{password,jdbcType=VARCHAR},
+			#{name,jdbcType=VARCHAR},
+			#{telephone,jdbcType=VARCHAR},
+			#{email,jdbcType=VARCHAR},
+			#{enrolldate,jdbcType=TIMESTAMP},
+			#{token,jdbcType=VARCHAR}
+		)
+	</insert>
+
+	<insert id="saveAdminRoles" parameterType="hashMap">
+		insert into admin_role values(
+			#{admin_id,jdbcType=NUMERIC},
+			#{role_id,jdbcType=NUMERIC}
+		)
+	</insert>
+	
+	<update id="updateAdmin" parameterType="org.zhao.entity.Admin">
+		update admin_info set 
+			name=#{name,jdbcType=VARCHAR},
+			telephone=#{telephone,jdbcType=VARCHAR},
+			email=#{email,jdbcType=VARCHAR}
+			<if test="token!=null">
+				,token=#{token,jdbcType=VARCHAR}
+			</if>
+		where admin_id=#{admin_id}
+	</update>
+	
+	<delete id="deleteAdminRoles" parameterType="int">
+		delete from admin_role where admin_id=#{admin_id}
+	</delete>
+	
+	<delete id="deleteAdmin" parameterType="int">
+		delete from admin_info where admin_id=#{id}
+	</delete>	
+	
+	<select id="findByCode" parameterType="string" resultType="org.zhao.entity.Admin">
+		select * from admin_info where admin_code=#{adminCode}
+	</select>
+	
+	<select id="findModulesByAdminId" parameterType="int" resultType="org.zhao.entity.Module">
+		select * from module_info where module_id in (
+			select rm.module_id
+			from admin_role ar
+			inner join role_info ri on ri.role_id=ar.role_id
+			inner join role_module rm on rm.role_id=ri.role_id
+			where ar.admin_id=#{adminId}
+		) order by module_id
+	</select>
+	
+	<select id="findAdminByName" parameterType="string" resultType="org.zhao.entity.Admin">
+		SELECT * FROM ADMIN_INFO ai WHERE LOWER(ai.name)=LOWER(#{name})
+	</select>
+	
+	<select id="findAdminByCode" parameterType="string" resultType="org.zhao.entity.Admin">
+		SELECT * FROM ADMIN_INFO ai WHERE LOWER(ai.admin_code)=LOWER(#{adminCode})
+	</select>
+	
+	<select id="getAdminInfoByAdminId" parameterType="int" resultMap="adminMap">
+		select * from admin_info ai where ai.admin_id=#{adminId}
+	</select>
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+</mapper>
